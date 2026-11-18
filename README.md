@@ -1,8 +1,8 @@
 # reason
 
-**Don't act by instinct. Act by reason.**
+**The open-source Instinct. Don't act by instinct. Act by reason.**
 
-reason is an open-source personal agent you text. It has its own phone number and its own computer (a browser, and an Android phone on higher tiers). It does real tasks for you: it books, buys, fills forms and signs in to your accounts. It asks you only for what it can't decide on its own: a login code, or an "ok" before it spends money.
+reason is an open-source personal agent you text, in the spirit of [Instinct](https://instinct.com). It has its own phone number and its own computer (a browser, and an Android phone on higher tiers). It does real tasks for you: it books, buys, fills forms and signs in to your accounts. It asks you only for what it can't decide on its own: a login code, or an "ok" before it spends money.
 
 It is self-hosted first, and built so it can also run as a multi-tenant SaaS, with one isolated agent per person.
 

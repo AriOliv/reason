@@ -15,10 +15,10 @@
 ## Post no X (fio)
 
 **1/7**
-Vou construir em público um agente pessoal open source.
+Vou criar o Instinct open source.
+E construir em público.
 
 Nome: reason.
-
 Don't act by instinct. Act by reason.
 
 **2/7**
@@ -51,20 +51,21 @@ O plano:
 4. Agentes conversando entre si
 
 **7/7**
-Inspirado no Instinct.
-Mas self-hosted e open source (AGPL).
+Self-hosted, open source (AGPL) e pronto para virar SaaS.
 Vou postar cada passo aqui: o que funcionou, o que quebrou e quanto custou.
 
 github.com/AriOliv/reason
 
 ## Post no LinkedIn
 
-Comecei um projeto novo, e vou construir em público.
+Vou criar o Instinct open source.
+E construir em público.
 
 Nome: reason.
 Don't act by instinct. Act by reason.
 
-É um agente pessoal open source.
+Para quem não conhece: o Instinct é o agente pessoal que você usa só por mensagem.
+O reason segue a mesma ideia.
 Você manda mensagem no WhatsApp.
 Ele tem número próprio e computador próprio.
 E resolve: compra, reserva, preenche formulário, entra nas suas contas.
@@ -90,7 +91,7 @@ Os próximos passos:
 3. Virar SaaS.
 4. Agentes conversando entre si.
 
-É inspirado no Instinct, mas self-hosted e open source (AGPL).
+A diferença: é self-hosted, open source (AGPL) e pronto para virar SaaS.
 
 Vou postar cada etapa: o que funcionou, o que quebrou e quanto custou.
 
