@@ -1,0 +1,10 @@
+.env
+.env.*
+*.tfvars
+!*.tfvars.example
+secrets/
+.terraform/
+node_modules/
+__pycache__/
+.venv/
+.DS_Store
