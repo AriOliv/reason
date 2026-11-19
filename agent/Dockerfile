@@ -11,6 +11,7 @@ RUN cd /opt/hermes/scripts/whatsapp-bridge \
     && /opt/hermes/.venv/bin/python -c "import hashlib, pathlib; p = pathlib.Path('package.json'); pathlib.Path('node_modules/.hermes-pkg-hash').write_text(hashlib.sha256(p.read_bytes()).hexdigest()[:16])"
 
 COPY reason_flow /opt/hermes/gateway/reason_flow
+COPY reason_guard /opt/hermes/gateway/reason_guard
 COPY patches /opt/reason/patches
 COPY config /opt/reason/config
 COPY cont-init.d/005-reason-seed /etc/cont-init.d/005-reason-seed
@@ -20,7 +21,7 @@ COPY tests /opt/reason/tests
 RUN /opt/hermes/.venv/bin/python /opt/reason/patches/apply.py \
     && cd /opt/hermes && /opt/hermes/.venv/bin/python -m unittest discover -s /opt/reason/tests -v \
     && chmod 0755 /etc/cont-init.d/005-reason-seed \
-    && chmod -R a+rX,go-w /opt/hermes/gateway/reason_flow /opt/reason /opt/hermes/scripts/whatsapp-bridge
+    && chmod -R a+rX,go-w /opt/hermes/gateway/reason_flow /opt/hermes/gateway/reason_guard /opt/reason /opt/hermes/scripts/whatsapp-bridge
 
 ENV REASON_REACTIONS=1 \
     REASON_NATURAL_TYPING=1 \

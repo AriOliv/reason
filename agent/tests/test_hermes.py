@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import asyncio
 import importlib.machinery
+import json
 import importlib.util
 import os
 import pathlib
@@ -16,6 +17,7 @@ try:
     from gateway.config import Platform
     from gateway.platforms.event import MessageEvent, MessageType, ProcessingOutcome
     from gateway.reason_flow import state
+    from gateway.reason_guard import hook as guard_hook, policy as guard_policy, screen as guard_screen
     from gateway.run import GatewayRunner
     from gateway.session import SessionSource
     from plugins.platforms.telegram.adapter import TelegramAdapter
@@ -186,6 +188,103 @@ class Image(unittest.TestCase):
         self.assertIn("Maria", soul)
         for template in ("config.yaml", "SOUL.md"):
             self.assertIn("{{", pathlib.Path("/opt/reason/config", template).read_text())  # placeholders, not values
+
+
+CART = """### Page
+- Page URL: https://shop.example/cart
+### Snapshot
+```yaml
+- main [ref=e1]:
+  - link "See details" [ref=e3]
+  - button "Place order" [ref=e4]
+```"""
+HUMAN_PRESENT = (None, False, True, True)  # tools.approval._presence(): a gateway owner can answer
+
+
+@unittest.skipUnless(IN_IMAGE, "outside the Hermes image")
+class Guard(unittest.TestCase):
+    """The guard inside the real Hermes: the one pre-tool path, the dispatch, the approval rules."""
+
+    def setUp(self):
+        guard_screen.reset()
+
+    def directive(self, tool, args, call="c1"):
+        from hermes_cli.plugins import _get_pre_tool_call_directive_details
+        return _get_pre_tool_call_directive_details(tool, args, session_id="s", tool_call_id=call)
+
+    def ask_context(self, yolo=False, mode="manual", presence=HUMAN_PRESENT):
+        return (mock.patch("tools.approval._yolo_active", return_value=yolo),
+                mock.patch("tools.approval_context._get_approval_mode", return_value=mode),
+                mock.patch("tools.approval._presence", return_value=presence))
+
+    def test_unknown_tools_and_route_arounds_are_blocked(self):
+        for tool, args in (("mcp__evil__steal", {}), ("terminal", {"command": "id"}),
+                           ("mcp__browser__browser_evaluate", {"function": "() => 1"}), ("skill_manage", {})):
+            d = self.directive(tool, args)
+            self.assertEqual(d.action, "block", tool)
+            self.assertIn("reason guard", d.message)
+        self.assertIsNone(self.directive("memory", {"action": "read"}).action)
+
+    def test_purchase_asks_the_owner_once_per_call(self):
+        guard_hook.observe("mcp__browser__browser_snapshot", {}, json.dumps({"result": CART}))
+        a, b, c = self.ask_context()
+        with a, b, c:
+            first = self.directive("mcp__browser__browser_click", {"target": "e4", "element": "a link"}, "c1")
+            again = self.directive("mcp__browser__browser_click", {"target": "e4", "element": "a link"}, "c1")
+            harmless = self.directive("mcp__browser__browser_click", {"target": "e3", "element": "Place order"})
+        self.assertEqual(first.action, "approve")
+        self.assertIn("Place order", first.message)
+        self.assertNotEqual(first.rule_key, again.rule_key)  # "always"/"session" can't pre-approve the next one
+        self.assertIsNone(harmless.action)
+
+    def test_asks_are_never_auto_approved(self):
+        guard_hook.observe("mcp__browser__browser_snapshot", {}, json.dumps({"result": CART}))
+        for ctx, why in ((dict(yolo=True), "yolo"), (dict(mode="off"), "approvals"), (dict(mode="smart"), "approvals"),
+                         (dict(presence=(None, False, False, False)), "no owner")):
+            a, b, c = self.ask_context(**ctx)
+            with a, b, c:
+                d = self.directive("mcp__browser__browser_click", {"target": "e4"})
+            self.assertEqual(d.action, "block", ctx)
+            self.assertIn(why, d.message)
+
+    def test_a_broken_guard_blocks(self):
+        with mock.patch.object(guard_policy, "decide", side_effect=RuntimeError("boom")):
+            self.assertEqual(self.directive("memory", {}).action, "block")
+
+    def test_a_blocked_call_never_reaches_the_tool(self):
+        import model_tools
+        with mock.patch.object(model_tools, "_execute_tool") as execute:
+            out = model_tools.handle_function_call("mcp__browser__browser_evaluate", {"function": "() => 1"},
+                                                   session_id="s", tool_call_id="c9")
+        execute.assert_not_called()
+        self.assertIn("reason guard", out)
+
+    def test_results_teach_the_guard(self):
+        import model_tools
+        with mock.patch.object(model_tools, "_execute_tool", return_value=json.dumps({"result": CART})):
+            model_tools.handle_function_call("mcp__browser__browser_snapshot", {}, session_id="s", tool_call_id="c2")
+        self.assertIn("Place order", guard_screen.get().refs["e4"])
+
+    def test_the_real_tool_list_is_tagged(self):
+        import hermes_yaml as yaml
+        import model_tools
+        seed = Image.seed(self)
+        env = {"OWNER_NAME": "Maria", "WHATSAPP_ALLOWED_USERS": "5511999990000", "WHATSAPP_ENABLED": "true",
+               "REASON_MODEL_BASE_URL": "https://llm.example/v1", "REASON_PHONE_MCP_URL": "http://phone:3000/mcp"}
+        with mock.patch.dict(os.environ, env):
+            config = yaml.safe_load(seed.render("config.yaml", seed.values()))
+        self.assertEqual(config["approvals"]["mode"], "manual")
+        for key in ("cron_mode", "unattended_mode", "single_query_mode"):
+            self.assertEqual(config["approvals"][key], "deny")
+        for platform in ("hermes-telegram", "hermes-whatsapp"):
+            names = model_tools._select_tool_names([platform], config["agent"]["disabled_toolsets"], True)
+            self.assertTrue(names)
+            for name in names:
+                self.assertTrue(guard_policy.known(name), f"{name} is not tagged in reason_guard.policy")
+            self.assertFalse({"computer_use", "manage_connections", "terminal", "execute_code"} & names)
+        servers = config["mcp_servers"]
+        self.assertEqual(sorted(servers["browser"]["tools"]["include"]), guard_policy.BROWSER_TOOLS)
+        self.assertEqual(sorted(servers["phone"]["tools"]["include"]), guard_policy.PHONE_TOOLS)
 
 
 if __name__ == "__main__":
