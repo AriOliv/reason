@@ -1,0 +1,13 @@
+#!/bin/sh
+# Start Playwright MCP against the Chromium build that ships with its own Playwright.
+set -eu
+CHROMIUM=$(find /ms-playwright -path '*chrome-linux*/chrome' -type f | head -1)
+[ -x "$CHROMIUM" ] || { echo "reason-mcp: chromium not found" >&2; exit 1; }
+exec node /opt/computer/node_modules/@playwright/mcp/cli.js \
+  --host 0.0.0.0 --port 8931 \
+  --allowed-hosts "${COMPUTER_ALLOWED_HOSTS:-computer:8931,localhost:8931,computer,localhost}" \
+  --executable-path "$CHROMIUM" \
+  --user-data-dir /data/profile \
+  --output-dir /data/output \
+  --viewport-size 1280,760 \
+  --no-sandbox
