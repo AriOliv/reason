@@ -1,0 +1,9 @@
+{
+  "name": "reason-phone",
+  "private": true,
+  "description": "The agent's phone: mobile-mcp driving an Android device over adb.",
+  "license": "AGPL-3.0-only",
+  "dependencies": {
+    "@mobilenext/mobile-mcp": "1.0.18"
+  }
+}

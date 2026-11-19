@@ -28,6 +28,8 @@ DEFAULTS = {
 def values() -> dict:
     v = {k: os.environ.get(k) or d for k, d in DEFAULTS.items()}
     v["REASON_MODEL_BASE_URL"] = os.environ.get("REASON_MODEL_BASE_URL", "")
+    v["REASON_PHONE_MCP_URL"] = os.environ.get("REASON_PHONE_MCP_URL", "")
+    v["REASON_TOOLS_SENTENCE"] = ("a browser and an Android phone" if v["REASON_PHONE_MCP_URL"] else "a browser")
     v["REASON_LANGUAGE_NAME"] = LANGUAGES.get(v["REASON_LANGUAGE"], v["REASON_LANGUAGE"])
     phone = (os.environ.get("OWNER_PHONE") or os.environ.get("WHATSAPP_ALLOWED_USERS", "").split(",")[0]).strip()
     v["OWNER_PHONE"] = f"+{phone.lstrip('+')}" if phone.lstrip("+").isdigit() else "unknown (ask them)"
@@ -38,6 +40,8 @@ def render(name: str, v: dict) -> str:
     text = (SRC / name).read_text(encoding="utf-8")
     if name == "config.yaml" and os.environ.get("WHATSAPP_ENABLED", "false") != "true":
         text = re.sub(r"(?ms)^# >>> whatsapp.*?^# <<< whatsapp\n", "", text)
+    if name == "config.yaml" and not os.environ.get("REASON_PHONE_MCP_URL"):
+        text = re.sub(r"(?ms)^  # >>> phone.*?^  # <<< phone\n", "", text)
     for key, value in v.items():
         text = text.replace("{{" + key + "}}", value.replace('"', "'"))
     missing = sorted(set(re.findall(r"\{\{([A-Z_]+)\}\}", text)))

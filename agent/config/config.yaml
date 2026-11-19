@@ -84,6 +84,35 @@ voice:
 mcp_servers:
   browser:
     url: "{{REASON_BROWSER_MCP_URL}}"
+  # >>> phone (removed at boot unless REASON_PHONE_MCP_URL is set: the phone is optional)
+  phone:
+    url: "{{REASON_PHONE_MCP_URL}}"
+    headers:
+      Authorization: "Bearer ${REASON_PHONE_MCP_TOKEN}"
+    tools:
+      # Closed list. Left out on purpose: installing/uninstalling apps, clearing app data,
+      # batch commands (they would run any other tool), clipboard, device logs and crashes,
+      # recordings, saving files, location spoofing, folding, and the mobilenext cloud.
+      include:
+        - mobile_list_available_devices
+        - mobile_get_screen_size
+        - mobile_get_orientation
+        - mobile_set_orientation
+        - mobile_list_apps
+        - mobile_launch_app
+        - mobile_terminate_app
+        - mobile_get_foreground_app
+        - mobile_open_url
+        - mobile_list_elements_on_screen
+        - mobile_take_screenshot
+        - mobile_click_on_screen_at_coordinates
+        - mobile_double_tap_on_screen
+        - mobile_long_press_on_screen_at_coordinates
+        - mobile_swipe_on_screen
+        - mobile_drag_on_screen
+        - mobile_type_keys
+        - mobile_press_button
+  # <<< phone
 
 # >>> whatsapp (removed at boot unless WHATSAPP_ENABLED=true: on its own this block turns
 #     the platform on in Hermes 0.23, even with WHATSAPP_ENABLED=false)
