@@ -37,6 +37,8 @@ Read the full plan (in Portuguese, the language it is being built in): [`docs/PL
 | Folder | What goes there |
 |---|---|
 | [`agent/`](agent/) | the per-person agent image: Hermes, the human-like chat patches, the desktop and the phone |
+| [`computer/`](computer/) | the agent's browser: a visible Chromium on a virtual desktop, driven by Playwright MCP, watched through noVNC |
+| [`phone/`](phone/) | the agent's phone (optional, higher tier): mobile-mcp driving an Android device (Redroid) |
 | [`gateway/`](gateway/) | the public edge: WhatsApp/Telegram webhooks, sign-up site, routing |
 | [`control-plane/`](control-plane/) | provisioning, vault, payments policy, audit, data deletion |
 | [`deploy/`](deploy/) | Terraform and Kubernetes manifests, private by default (no public address except the gateway) |

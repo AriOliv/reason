@@ -171,6 +171,17 @@ class Image(unittest.TestCase):
         self.assertNotIn("whatsapp", config)  # stripped while WhatsApp is off
         self.assertEqual(config["model"]["api_key"], "${REASON_MODEL_API_KEY}")  # secret not rendered
         self.assertEqual(config["compression"]["threshold_tokens"], 100000)
+        self.assertNotIn("phone", config["mcp_servers"])  # no phone configured -> no phone tools
+        self.assertIn("a browser)", soul)
+        with mock.patch.dict(os.environ, {**env, "REASON_PHONE_MCP_URL": "http://phone:3000/mcp"}):
+            v2 = seed.values()
+            phone = yaml.safe_load(seed.render("config.yaml", v2))["mcp_servers"]["phone"]
+            soul2 = seed.render("SOUL.md", v2)
+        self.assertEqual(phone["headers"]["Authorization"], "Bearer ${REASON_PHONE_MCP_TOKEN}")  # token not rendered
+        for risky in ("mobile_install_app", "mobile_uninstall_app", "mobile_batch_commands", "mobile_clear_app_data",
+                      "mobile_clipboard", "mobile_login_to_cloud_provider", "mobile_set_location"):
+            self.assertNotIn(risky, phone["tools"]["include"])
+        self.assertIn("an Android phone", soul2)
         self.assertIn("+5511999990000", soul)
         self.assertIn("Maria", soul)
         for template in ("config.yaml", "SOUL.md"):

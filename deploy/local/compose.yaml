@@ -1,6 +1,7 @@
 # reason on one machine: the agent and its computer.
 #   cp .env.example .env   # fill it in
-#   docker compose up -d --build
+#   docker compose up -d --build                    # agent + browser
+#   docker compose --profile phone up -d --build    # + Android (needs the binder module on the host)
 # Nothing is reachable from outside the machine: noVNC binds to 127.0.0.1 only, and the
 # browser MCP lives on an internal network that only the agent joins.
 name: reason
@@ -31,11 +32,42 @@ services:
     restart: unless-stopped
     security_opt: ["no-new-privileges:true"]
 
+  # Optional phone (profile "phone"): Redroid runs privileged and needs binder on the host, so it is
+  # for a dedicated machine only. Set REASON_PHONE_MCP_URL=http://phone:3000/mcp in .env to give the
+  # agent the phone tools.
+  android:
+    image: redroid/redroid:14.0.0_64only-latest@sha256:0a611199ba2e0b5d60af39b3327a517f6407231f4352114ed3bd3cbfe2be69aa
+    profiles: [phone]
+    privileged: true
+    command:
+      - androidboot.redroid_width=1080
+      - androidboot.redroid_height=1920
+      - androidboot.redroid_dpi=420
+      - androidboot.redroid_gpu_mode=guest
+    volumes:
+      - android-data:/data
+    networks: [egress, phone]   # apps need the internet; adb (5555) only on the phone network
+    restart: unless-stopped
+
+  phone:
+    build: ../../phone
+    profiles: [phone]
+    environment:
+      MOBILEMCP_AUTH: ${REASON_PHONE_MCP_TOKEN:?set REASON_PHONE_MCP_TOKEN in .env}
+      PHONE_ADB_TARGET: android:5555
+    networks: [computer, phone]  # the agent reaches it on "computer"; it reaches adb on "phone"
+    depends_on: [android]
+    restart: unless-stopped
+    security_opt: ["no-new-privileges:true"]
+
 networks:
   egress: {}                  # internet access (model, messaging, websites)
   computer:
-    internal: true            # agent <-> browser MCP only
+    internal: true            # agent <-> browser MCP and phone MCP only
+  phone:
+    internal: true            # phone MCP <-> Android adb only
 
 volumes:
   agent-data: {}
   computer-data: {}
+  android-data: {}
