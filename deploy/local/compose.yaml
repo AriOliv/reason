@@ -1,0 +1,41 @@
+# reason on one machine: the agent and its computer.
+#   cp .env.example .env   # fill it in
+#   docker compose up -d --build
+# Nothing is reachable from outside the machine: noVNC binds to 127.0.0.1 only, and the
+# browser MCP lives on an internal network that only the agent joins.
+name: reason
+
+services:
+  agent:
+    build: ../../agent
+    env_file: .env
+    environment:
+      REASON_BROWSER_MCP_URL: http://computer:8931/mcp
+    volumes:
+      - agent-data:/opt/data
+    networks: [egress, computer]
+    depends_on: [computer]
+    restart: unless-stopped
+    security_opt: ["no-new-privileges:true"]
+
+  computer:
+    build: ../../computer
+    environment:
+      COMPUTER_VNC_PASSWORD: ${COMPUTER_VNC_PASSWORD:?set COMPUTER_VNC_PASSWORD in .env}
+    volumes:
+      - computer-data:/data
+    ports:
+      - "127.0.0.1:6080:6080"   # noVNC: watch the agent, or take over to sign in somewhere
+    shm_size: 1gb
+    networks: [egress, computer]
+    restart: unless-stopped
+    security_opt: ["no-new-privileges:true"]
+
+networks:
+  egress: {}                  # internet access (model, messaging, websites)
+  computer:
+    internal: true            # agent <-> browser MCP only
+
+volumes:
+  agent-data: {}
+  computer-data: {}

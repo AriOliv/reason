@@ -1,0 +1,9 @@
+{
+  "name": "reason-computer",
+  "private": true,
+  "description": "The agent's browser: Playwright MCP driving a visible Chromium on a virtual desktop.",
+  "license": "AGPL-3.0-only",
+  "dependencies": {
+    "@playwright/mcp": "0.0.85"
+  }
+}
