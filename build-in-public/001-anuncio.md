@@ -1,6 +1,6 @@
 # 001 · Anúncio: o repo vai a público
 
-*18/11/2026 · rascunho*
+*18/11/2026 · X publicado em 19/11 (fio de 7, @arioliv_) · LinkedIn: rascunho*
 
 ## O que aconteceu
 
