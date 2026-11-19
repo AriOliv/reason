@@ -10,6 +10,8 @@ a no-op.
     base.py  final text send        reason_flow.delivery.deliver         (reactions, quotes, split, typing)
     run_inbound.py _hm_busy_preempt follow-up joins the running turn     (REASON_FOLLOWUPS)
     bridge.js                       POST /react for WhatsApp reactions
+    plugins.py  pre_tool_call       reason_guard decides first: allow / ask / deny (no switch)
+    model_tools.py  after dispatch  reason_guard learns the screen from each result
 """
 
 from __future__ import annotations
@@ -82,6 +84,24 @@ EDITS = [
         "app.post('/typing', async (req, res) => {\n",
         "",
     ),
+    Edit(
+        HERMES / "hermes_cli" / "plugins.py",
+        '''    from hermes_cli.lifecycle import invoke_hook as invoke_lifecycle_hook
+    hook_results = invoke_lifecycle_hook(
+        "pre_tool_call", tool_name=tool_name, args=args if isinstance(args, dict) else {},
+''',
+        "",  # handled by REPLACE: the guard goes before the plugin hooks
+    ),
+    Edit(
+        HERMES / "model_tools.py",
+        '''        result = _execute_tool(function_name, function_args, original_args, ids, user_task=user_task,
+                               enabled_tools=enabled_tools, skip_tool_execution_middleware=skip_tool_execution_middleware)
+''',
+        f'''        # {MARK}: the reason guard learns what the screen shows from the result
+        from gateway.reason_guard import hook as _reason_guard
+        _reason_guard.observe(function_name, function_args, result)
+''',
+    ),
 ]
 
 # Edits that must replace (not just follow) their anchor: anchor -> replacement.
@@ -103,6 +123,19 @@ REPLACE = {
             return bool(_reason_outcome.steered or _reason_outcome.redirected)
         if (self._draining or adapter is None or running_agent is None or running_agent is _AGENT_PENDING_SENTINEL
 ''',
+    EDITS[5].anchor: f'''    # {MARK}: the reason guard decides first, in code. It fails closed (Hermes treats a
+    # failing hook as "allow") and no config or plugin can switch it off.
+    try:
+        from gateway.reason_guard import hook as _reason_guard
+        _reason = _reason_guard.directive(tool_name, args, session_id=session_id, tool_call_id=tool_call_id)
+    except Exception:
+        _reason = {{"action": "block", "message": "BLOCKED by the reason guard: unavailable, the action did not run."}}
+    if _reason is not None:
+        if _reason.get("action") == "approve":
+            return _PreToolCallDirective(action="approve", message=_reason.get("message"),
+                                         rule_key=_reason.get("rule_key"))
+        return _PreToolCallDirective(action="block", message=_reason.get("message") or "BLOCKED by the reason guard.")
+''' + EDITS[5].anchor,
     EDITS[4].anchor: f"""// {MARK}: native WhatsApp reaction on a received message (empty emoji removes it)
 app.post('/react', async (req, res) => {{
   if (!sock || connectionState !== 'connected') {{

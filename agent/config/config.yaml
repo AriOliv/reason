@@ -39,6 +39,17 @@ agent:
     - discord
     - discord_admin
     - vision
+    - computer_use     # the agent's computer is the browser and phone MCPs below
+    - connections      # connectors come later, with their own tags in reason_guard
+
+# The reason guard (reason_guard/) asks the owner before anything that buys, sends, publishes
+# or deletes. Those asks must reach a person: no auto-approval anywhere.
+approvals:
+  mode: manual
+  timeout: 900
+  cron_mode: deny
+  unattended_mode: deny
+  single_query_mode: deny
 
 # Compaction is lossy (an LLM summary), so it runs rarely; pruning old tool output
 # (screenshots, accessibility trees) is lossless for the conversation and runs early.
@@ -84,6 +95,28 @@ voice:
 mcp_servers:
   browser:
     url: "{{REASON_BROWSER_MCP_URL}}"
+    tools:
+      # Closed list, the same as reason_guard.policy.BROWSER_TOOLS (a test keeps them equal).
+      # Left out: running JavaScript or code in the page, raw key events, file upload and drop,
+      # network and console tools, page-provided (WebMCP) tools.
+      include:
+        - browser_click
+        - browser_close
+        - browser_drag
+        - browser_fill_form
+        - browser_find
+        - browser_handle_dialog
+        - browser_hover
+        - browser_navigate
+        - browser_navigate_back
+        - browser_press_key
+        - browser_resize
+        - browser_select_option
+        - browser_snapshot
+        - browser_tabs
+        - browser_take_screenshot
+        - browser_type
+        - browser_wait_for
   # >>> phone (removed at boot unless REASON_PHONE_MCP_URL is set: the phone is optional)
   phone:
     url: "{{REASON_PHONE_MCP_URL}}"

@@ -9,5 +9,6 @@ exec node /opt/computer/node_modules/@playwright/mcp/cli.js \
   --executable-path "$CHROMIUM" \
   --user-data-dir /data/profile \
   --output-dir /data/output \
+  --output-max-size 52428800 \
   --viewport-size 1280,760 \
   --no-sandbox
