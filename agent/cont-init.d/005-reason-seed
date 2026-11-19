@@ -1,0 +1,77 @@
+#!/command/with-contenv /opt/hermes/.venv/bin/python
+"""Render the reason config and persona into the agent's data volume, on every boot.
+
+Runs before Hermes' own setup (005 < 01). Values come from the container environment
+(with-contenv); the repository never holds anything personal. Secrets are not rendered:
+the config keeps ${NAME} for Hermes to expand at runtime.
+"""
+import os
+import pathlib
+import re
+import shutil
+
+DATA = pathlib.Path("/opt/data")
+SRC = pathlib.Path("/opt/reason/config")
+UID = int(os.environ.get("HERMES_UID", "10000"))
+GID = int(os.environ.get("HERMES_GID", "10000"))
+
+LANGUAGES = {"pt": "Brazilian Portuguese", "en": "English", "es": "Spanish"}
+DEFAULTS = {
+    "REASON_MODEL": "gemini-3.8-flash",
+    "REASON_STT_MODEL": "whisper-v3-turbo",
+    "REASON_LANGUAGE": "pt",
+    "REASON_BROWSER_MCP_URL": "http://browser:8931/mcp",
+    "OWNER_NAME": "the owner",
+}
+
+
+def values() -> dict:
+    v = {k: os.environ.get(k) or d for k, d in DEFAULTS.items()}
+    v["REASON_MODEL_BASE_URL"] = os.environ.get("REASON_MODEL_BASE_URL", "")
+    v["REASON_LANGUAGE_NAME"] = LANGUAGES.get(v["REASON_LANGUAGE"], v["REASON_LANGUAGE"])
+    phone = (os.environ.get("OWNER_PHONE") or os.environ.get("WHATSAPP_ALLOWED_USERS", "").split(",")[0]).strip()
+    v["OWNER_PHONE"] = f"+{phone.lstrip('+')}" if phone.lstrip("+").isdigit() else "unknown (ask them)"
+    return v
+
+
+def render(name: str, v: dict) -> str:
+    text = (SRC / name).read_text(encoding="utf-8")
+    if name == "config.yaml" and os.environ.get("WHATSAPP_ENABLED", "false") != "true":
+        text = re.sub(r"(?ms)^# >>> whatsapp.*?^# <<< whatsapp\n", "", text)
+    for key, value in v.items():
+        text = text.replace("{{" + key + "}}", value.replace('"', "'"))
+    missing = sorted(set(re.findall(r"\{\{([A-Z_]+)\}\}", text)))
+    if missing:
+        raise SystemExit(f"reason seed: no value for {missing} in {name}")
+    return text
+
+
+def write(path: pathlib.Path, text: str, mode: int) -> None:
+    path.write_text(text, encoding="utf-8")
+    os.chmod(path, mode)
+    os.chown(path, UID, GID)
+
+
+def main() -> None:
+    DATA.mkdir(mode=0o700, exist_ok=True)
+    os.chown(DATA, UID, GID)
+    v = values()
+    write(DATA / "config.yaml", render("config.yaml", v), 0o600)
+    write(DATA / "SOUL.md", render("SOUL.md", v), 0o644)
+    # Hermes runs the WhatsApp bridge from a writable copy under HERMES_HOME; refresh it from the
+    # image (dependencies installed at build time) so it never runs stale code or npm install.
+    bridge = pathlib.Path("/opt/hermes/scripts/whatsapp-bridge")
+    copy = DATA / "scripts" / "whatsapp-bridge"
+    if (bridge / "node_modules").is_dir():
+        shutil.rmtree(copy, ignore_errors=True)
+        copy.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copytree(bridge, copy, symlinks=True)
+        for root, dirs, files in os.walk(DATA / "scripts"):
+            for name in dirs + files:
+                os.lchown(os.path.join(root, name), UID, GID)
+        os.chown(DATA / "scripts", UID, GID)
+    print("reason seed: config and persona rendered")
+
+
+if __name__ == "__main__":
+    main()

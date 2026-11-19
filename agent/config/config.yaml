@@ -1,0 +1,96 @@
+# reason agent: Hermes configuration template.
+# Rendered at boot by cont-init.d/005-reason-seed: double-brace placeholders come from the environment.
+# Secrets stay as ${NAME} and are expanded by Hermes at runtime, never written to disk.
+
+model:
+  default: "{{REASON_MODEL}}"
+  provider: custom
+  base_url: "{{REASON_MODEL_BASE_URL}}"
+  api_key: ${REASON_MODEL_API_KEY}
+
+agent:
+  # Fast turns: the agent acts, it does not deliberate at length.
+  reasoning_effort: none
+  # Screenshots go straight to the (vision-capable) model, no extra vision call.
+  image_input_mode: native
+  # No "working… N min" or timeout notices in the chat.
+  gateway_notify_interval: 0
+  gateway_timeout_warning: 0
+  # The agent works through its own computer (browser MCP, desktop, phone), not a shell.
+  disabled_toolsets:
+    - terminal
+    - code_execution
+    - file
+    - delegation
+    - cronjob
+    - kanban
+    - homeassistant
+    - image_gen
+    - video_gen
+    - video
+    - web
+    - search
+    - x_search
+    - browser
+    - tts
+    - todo
+    - project
+    - bot_room
+    - discord
+    - discord_admin
+    - vision
+
+# Compaction is lossy (an LLM summary), so it runs rarely; pruning old tool output
+# (screenshots, accessibility trees) is lossless for the conversation and runs early.
+compression:
+  enabled: true
+  threshold_tokens: 100000
+  proactive_prune_tokens: 20000
+  min_tail_user_messages: 3
+  protect_last_n: 8
+  progress_notices: false
+
+display:
+  busy_input_mode: queue        # follow-ups are handled by reason_flow first (join the running turn)
+  busy_ack_enabled: false
+  tool_progress: "off"
+  interim_assistant_messages: false
+  long_running_notifications: false
+  show_reasoning: false
+  platforms:
+    telegram:
+      streaming: false
+      tool_progress: "off"
+    whatsapp:
+      streaming: false
+      tool_progress: "off"
+
+streaming:
+  enabled: false
+
+# Voice notes are transcribed and handled as text. No text-to-speech.
+stt:
+  enabled: true
+  provider: openai
+  language: "{{REASON_LANGUAGE}}"
+  openai:
+    model: "{{REASON_STT_MODEL}}"
+    base_url: "{{REASON_MODEL_BASE_URL}}"
+    api_key: ${REASON_MODEL_API_KEY}
+
+voice:
+  auto_tts: false
+
+mcp_servers:
+  browser:
+    url: "{{REASON_BROWSER_MCP_URL}}"
+
+# >>> whatsapp (removed at boot unless WHATSAPP_ENABLED=true: on its own this block turns
+#     the platform on in Hermes 0.23, even with WHATSAPP_ENABLED=false)
+whatsapp:
+  unauthorized_dm_behavior: ignore
+  group_policy: disabled
+  reply_prefix: ""
+  send_read_receipts: false
+  text_batch_delay_seconds: 1.5
+# <<< whatsapp
