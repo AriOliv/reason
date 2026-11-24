@@ -20,6 +20,7 @@ Each phase starts only when the previous gate passes. Durations are estimates.
 - [ ] Payments: Stripe Link single-use cards and a spend policy
 - [ ] The agent's own email address
 - [ ] Connectors: Google Workspace and Outlook
+- [ ] Residential exit for the agent's browser: from a cloud IP, Cloudflare's "Verify you are human" check keeps looping even after a correct click; from a home IP the same click passes. Route only the sites that need it, to keep the cost low
 - [ ] Public v0.1 release
 
 **Gate:** Meta approves the number; first purchase paid with a single-use card.
